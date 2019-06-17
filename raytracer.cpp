@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include "vec3.h"
 
 int main() {
 	std::ofstream file;
@@ -9,14 +10,10 @@ int main() {
 	file << "P3\n" << COLUMNS << " " << ROWS << "\n255\n";
 	for (int row = ROWS - 1; row >=0; row--) {
 		for (int col = 0; col < COLUMNS; col++) {
-			float r = float(col) / float(COLUMNS);
-			float g = float(row) / float(ROWS);
-			float b = 0.2;
-
-			int ir = int(255.99 * r);
-			int ig = int(255.99 * g);
-			int ib = int(255.99 * b);
-
+			vec3 v { float(col) / float(COLUMNS), float(row) / float(ROWS), 0.2 };
+			int ir = int(v.x() * 255.99);
+			int ig = int(v.y() * 255.99);
+			int ib = int(v.z() * 255.99);
 			file << ir << " " << ig << " " << ib << "\n";
 		}
 	}
