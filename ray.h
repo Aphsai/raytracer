@@ -1,5 +1,5 @@
 #pragma once
-#include "vec.h"
+#include "vec3.h"
 
 class ray {
 	public:
@@ -11,4 +11,4 @@ class ray {
 
 		vec3 A;
 		vec3 B;
-}
+};

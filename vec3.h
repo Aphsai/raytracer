@@ -1,3 +1,4 @@
+#pragma once 
 #include <math.h>
 #include <stdlib.h>
 #include <iostream>
@@ -46,6 +47,10 @@ inline std::ostream& operator>>(std::ostream &os, vec3 &t) {
 	os << t.d[0] << " " <<  t.d[1] << " " << t.d[2];
 	return os;
 }
+inline vec3 unit_vector(const vec3 &v1) {
+	return vec3 { v1.d[0] / v1.length(), v1.d[1] / v1.length(), v1.d[2] / v1.length() };
+}
+
 inline vec3 operator+(const vec3 &v1, const vec3 &v2){
 	return vec3 { v1.d[0] + v2.d[0], v1.d[1] + v2.d[1], v1.d[2] + v2.d[2] };
 }
