@@ -32,6 +32,7 @@ class vec3 {
 			return sqrt(squared_length());
 		}
 		inline void make_unit_vector();	
+		friend std::ostream& operator<<(std::ostream &os, const vec3 &t);
 		float d[3];
 };
 
@@ -39,12 +40,12 @@ inline void vec3::make_unit_vector() {
 	float m = 1.0 / squared_length();
 	d[0] *= m; d[1] *= m; d[2] *= m;
 }
-inline std::istream& operator>>(std::istream &is, vec3 &t) {
+std::istream& operator>>(std::istream &is, vec3 &t) {
 	is >> t.d[0] >> t.d[1] >> t.d[2];
 	return is;
 }
-inline std::ostream& operator>>(std::ostream &os, vec3 &t) {
-	os << t.d[0] << " " <<  t.d[1] << " " << t.d[2];
+std::ostream& operator<<(std::ostream &os, const vec3 &t) {
+	os << "Vec3( " << t.d[0] << " " <<  t.d[1] << " " << t.d[2] << " )";
 	return os;
 }
 inline vec3 unit_vector(const vec3 &v1) {
