@@ -11,18 +11,24 @@ struct Sphere {
 	float radius;
 };
 
-bool hit_sphere(const Sphere sphere, const ray& r) {
+float hit_sphere(const Sphere sphere, const ray& r) {
 	vec3 oc = r.origin() - sphere.center;
 	float a = dot(r.direction(), r.direction());
 	float b = 2.0 * dot (oc, r.direction());
 	float c = dot (oc, oc) - sphere.radius * sphere.radius;
 
-	return (b * b - 4 * a * c) > 0;
+	float discriminant = (b * b - 4 * a * c);
+	if (discriminant < 0) return -1;
+	else return (-b - sqrt(discriminant)) / (2.0 * a);
 }
 
 vec3 color(const ray& r) {
 	Sphere sphere = { vec3 (0, 0, -1), 0.5 };
-	if (hit_sphere(sphere, r)) return vec3 (1.0, 0, 0);
+	float root = (hit_sphere(sphere, r));
+	if (root > 0) {
+		vec3 N = unit_vector(r.point_at_parameter(root) - sphere.center);
+		return 0.5 * vec3 (N.x() + 1, N.y() + 1, N.z() + 1);
+	}
 
 	vec3 unit_direction = unit_vector(r.direction());
 	//Scale to 0.0 - 1.0
