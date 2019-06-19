@@ -1,6 +1,8 @@
 #pragma once
 #include "collideable.h"
 
+class Material;
+
 class CollideableList : public Collideable {
 	public:
 		CollideableList() {}
@@ -27,10 +29,11 @@ bool CollideableList::hit(const ray& r, float t_min, float t_max, HitRecord& rec
 class Sphere: public Collideable {
 	public:
 		Sphere() {}
-		Sphere(vec3 c, float r) { center = c; radius = r; }
+		Sphere(vec3 c, float r, Material* m) { center = c; radius = r; material = m; }
 		virtual bool hit(const ray& r, float t_min, float t_max, HitRecord& rec) const;
-		vec3 center;
 		float radius;
+		Material *material;
+		vec3 center;
 };
 
 bool Sphere::hit(const ray& r, float t_min, float t_max, HitRecord& rec) const {
@@ -47,6 +50,7 @@ bool Sphere::hit(const ray& r, float t_min, float t_max, HitRecord& rec) const {
 			rec.t = time_till_hit;
 			rec.p = r.point_at_parameter(time_till_hit);
 			rec.normal = (rec.p - center) / radius;
+			rec.mat_ptr = material;
 			return true;
 		}
 		time_till_hit = (-b + discriminant_root) / (2 * a);
@@ -54,6 +58,7 @@ bool Sphere::hit(const ray& r, float t_min, float t_max, HitRecord& rec) const {
 			rec.t = time_till_hit;
 			rec.p = r.point_at_parameter(time_till_hit);
 			rec.normal = (rec.p - center) / radius;
+			rec.mat_ptr = material;
 			return true;
 		}
 	}
