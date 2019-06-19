@@ -8,13 +8,24 @@
 #include "primitives.h"
 #include "camera.h"
 
+float get_random_float() {
+	return (float)(rand()) / RAND_MAX;
+}
 
-//TODO: Move to primitives header file
+vec3 random_in_unit_sphere() {
+	vec3 p;
+	//first time using a do-while very exciting
+	do {
+		p = 2.0 * vec3 (get_random_float(), get_random_float(), get_random_float()) - vec3(1, 1, 1);
+	} while (p.squared_length() >= 1.0);
+	return p;
+}
 
 vec3 color(const ray& r, Collideable *world) {
 	HitRecord rec;
-	if (world->hit(r, 0.0, std::numeric_limits<float>::max(), rec)) {
-		return 0.5 * vec3(rec.normal.x() + 1, rec.normal.y() + 1, rec.normal.z() + 1);
+	if (world->hit(r, 0.001, std::numeric_limits<float>::max(), rec)) {
+		vec3 target = rec.p + rec.normal + random_in_unit_sphere();
+		return 0.5 * color( ray(rec.p, target - rec.p), world);
 	}
 
 	vec3 unit_direction = unit_vector(r.direction());
@@ -42,12 +53,13 @@ int main() {
 		for (int col = 0; col < COLUMNS; col++) {
 			vec3 averaged_color (0, 0, 0);
 			for (int s = 0; s < SAMPLES; s++) {
-				float u = float(col + (float)(rand()) / RAND_MAX) / float(COLUMNS);
-				float v = float(row + (float)(rand()) / RAND_MAX) / float(ROWS);
+				float u = float(col + get_random_float()) / float(COLUMNS);
+				float v = float(row + get_random_float()) / float(ROWS);
 				ray r = camera.get_ray(u, v);
 				averaged_color += color(r, world);
 			}
 			averaged_color /= float(SAMPLES);
+			averaged_color = vec3( sqrt(averaged_color.x()), sqrt(averaged_color.y()) ,sqrt(averaged_color.z()));
 			int ir = int(averaged_color.x() * 255.99);
 			int ig = int(averaged_color.y() * 255.99);
 			int ib = int(averaged_color.z() * 255.99);
