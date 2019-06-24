@@ -3,8 +3,11 @@
 #include <limits>
 
 #include "primitives.h"
+#include "utility.h"
 
-vec3 color(ray &r, Entity* shape) {}
+vec3 color(ray &r, Entity* shape) {
+	return vec3 (0, 0, 0);
+}
 
 int main() {
 	std::ofstream file;
