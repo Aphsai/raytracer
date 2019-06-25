@@ -21,5 +21,6 @@ class Sphere : public Entity {
 };
 
 bool Sphere::hit(const ray& r) {
-	return true;    
+	// x * x + y * y + z * z = R * R;
+	//
 }

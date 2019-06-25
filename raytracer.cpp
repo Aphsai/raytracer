@@ -4,9 +4,10 @@
 
 #include "primitives.h"
 #include "utility.h"
+#include "hit.h"
 
 vec3 color(ray &r, Entity* shape) {
-	return vec3 (0, 0, 0);
+	if (shape.intersect
 }
 
 int main() {
@@ -20,13 +21,15 @@ int main() {
 	std::cout << "Writing to file..." << std::endl;
 	file << "P3\n" << WIDTH << " " << HEIGHT << "\n255\n";
 	std::cout << "Generating pixels..." << std::endl;
-    Entity* sphere = new Sphere( vec3(0, 0, 0), 0.5 );
+    	Entity* sphere = new Sphere( vec3(0, 0, 0), 0.5 );
+
+
 	for (int row = HEIGHT - 1; row >= 0; row--) {
 		for (int col = 0; col < WIDTH; col++) {
 			vec3 averaged_color (0, 0, 0);
 			for (int s = 0; s < SAMPLES; s++) {
-                ray r;
-				averaged_color += color(r, sphere);
+				ray primary_ray (vec3(0, 0, 0), vec3(row / HEIGHT * 2 - 1 + get_random_float(), col / WIDTH / 2 * - 1 + get_random_float(), -1));
+				averaged_color += color(primary_ray, sphere);
 			}
 			averaged_color /= float(SAMPLES);
 			averaged_color = vec3( sqrt(averaged_color.x()), sqrt(averaged_color.y()) ,sqrt(averaged_color.z()));
