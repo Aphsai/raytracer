@@ -19,12 +19,16 @@ fn main() {
         panic!("{}", e);
     });
 
-    let point_a = Vec3 { x: 0.0, y: 1.0, z: 0.0 };
-    let point_b = Vec3 { x: 1.0, y: 0.0, z: 1.0 };
-    let point_c = &point_a + &point_b + &point_b;
-    println!("point a : {:?}", point_a);
-    println!("point b : {:?}", point_b);
-    println!("point c : {:?}", point_c);
+//    let point_a = Vec3 { x: 0.0, y: 1.0, z: 0.0 };
+//    let point_b = Vec3 { x: 1.0, y: 0.0, z: 1.0 };
+//    let point_c = point_a + point_b + point_b;
+//    let point_d = 0.5 * point_b;
+//    let point_e = point_b * 0.5;
+//    println!("point a : {:?}", point_a);
+//    println!("point b : {:?}", point_b);
+//    println!("point c : {:?}", point_c);
+//    println!("point d : {:?}", point_d);
+//    println!("point e : {:?}", point_e);
 
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
