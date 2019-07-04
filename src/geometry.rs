@@ -9,15 +9,15 @@ pub struct Vec3 {
 
 impl Vec3 {
     #[inline]
-    fn squared_length(&self) -> f64 {
+    pub fn squared_length(&self) -> f64 {
         return self.x * self.x + self.y * self.y + self.z * self.z;
     }
     #[inline]
-    fn length(&self) -> f64 {
+    pub fn length(&self) -> f64 {
         return self.squared_length().sqrt();
     }
     #[inline]
-    fn make_unit_vector(&mut self) {
+    pub fn make_unit_vector(&mut self) {
         let len = self.squared_length();
         self.x /= len;
         self.y /= len;
