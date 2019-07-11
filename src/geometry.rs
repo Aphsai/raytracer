@@ -1,4 +1,5 @@
 use std::ops;
+use std::fmt;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vec3 {
@@ -17,11 +18,17 @@ impl Vec3 {
         return self.squared_length().sqrt();
     }
     #[inline]
-    pub fn make_unit_vector(&mut self) {
-        let len = self.squared_length();
+    pub fn normalize(&mut self) {
+        let len = self.length();
         self.x /= len;
         self.y /= len;
         self.z /= len;
+    }
+}
+
+impl fmt::Display for Vec3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        return write!(f, "({}, {}, {})", self.x, self.y, self.z);
     }
 }
 

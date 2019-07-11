@@ -47,32 +47,41 @@ fn main() {
 
     let mut spheres: Vec<Sphere> = Vec::new();
     let s1 = Sphere { 
-        center: Vec3 { x: 0.5, y: 0.5, z: 0.0 },
+        center: Vec3 { x: 0.1, y: 0.5, z: 0.0 },
         color: Vec3 { x: 100.0, y: 0.0, z: 1.0 },
-        radius: 0.5,
+        radius: 0.1,
     };
+    let s2 = Sphere { 
+        center: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
+        color: Vec3 { x: 20.0, y: 100.0, z: 1.0 },
+        radius: 0.1,
+    };
+    
+    let vec_c = Vec3 { x: 1.0, y: 2.0, z: 3.0 } - s1.center;
+    println!("{}", vec_c);
 
     spheres.push(s1);
+    spheres.push(s2);
 
     let camera = Vec3 { x: 0.0, y: 0.0, z: -1.0 };
 
+    for x in 0..HEIGHT {
+        for y in 0..WIDTH {
+
+            let i = (2.0 * (y as f64 + 0.5) / (WIDTH as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs() * (WIDTH as f64) / (HEIGHT as f64);
+            let j = -(2.0 * (x as f64 + 0.5) / (HEIGHT as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs();
+
+            let mut dir = Vec3 { x: i, y: j, z: 1.0 };
+            dir.normalize();
+
+            let color = determine_color(&spheres, camera, dir);
+
+            buffer[x * WIDTH + y] = (color.x as u32) << 16 | (color.y as u32) << 8 | (color.z as u32);
+
+        }
+    }
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Processing
-        for x in 0..HEIGHT {
-            for y in 0..WIDTH {
-
-                let i = (2.0 * (y as f64 + 0.5) / (WIDTH as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs() * (WIDTH as f64) / (HEIGHT as f64);
-                let j = (2.0 * (x as f64 + 0.5) / (HEIGHT as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs();
-
-                let mut dir = Vec3 { x: i, y: j, z: 1.0 };
-
-                dir.make_unit_vector();
-                let color = determine_color(&spheres, camera, dir);
-
-                buffer[x * WIDTH + y] = (color.x as u32) << 16 | (color.y as u32) << 8 | (color.z as u32);
-
-            }
-        }
 
             
         // Update window
