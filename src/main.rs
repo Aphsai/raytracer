@@ -24,9 +24,9 @@ impl Sphere {
         let oc = self.center - origin;
         let b = dot(oc, direction);
         let d = dot(oc, oc) - b * b;
-
-        if (d > self.radius * self.radius) return false;
-        
+        if (d > self.radius * self.radius) {
+            return false;
+        }
     }
 }
 
@@ -36,29 +36,29 @@ fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction:
         let point: Vec3;
         let normal: Vec3;
         let diffuse_light_intensity = 0.0;
-        if sphere.ray_intersect(origin, direction, &point, &normal) {
+        if sphere.ray_intersect(origin, direction, &mut point, &mut normal) {
                 for light in lights {
-                    Vec3 light_direction = (light.position - point).normalize();
-                    diffuse_light_intensity += light.intensity *  cmp::max(0.0, dot(light_direction, normal));
+                    let light_direction = (light.position - point).normalize();
+                    diffuse_light_intensity += light.intensity *  dot(light_direction, normal).max(0.0);
                 }
                 color = sphere.material.diffuse_color * diffuse_light_intensity;
                 break 'sphere_loop;
 
             }
         }
-    }
     return color
 }
 
 fn main() {
     let fov : f64 = 90.0 / 180.0 * f64::consts::PI;
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
-    let mut window = Window::new("", WIDTH, HEIGHT, WindowOptions::default()).unwrap_or_else(|e| {
+    let mut window = Window::new("", WIDTH, HEIGHT, WindowOptions { borderless: true, title: false, resize: false, scale: minifb::Scale::X1 } ).unwrap_or_else(|e| {
         panic!("{}", e);
     });
 
 
     let mut spheres: Vec<Sphere> = Vec::new();
+    let mut lights: Vec<Lights> = Vec::new();
 
     let s1 = Sphere { 
         center: Vec3 { x: 0.1, y: 0.5, z: 0.0 },
@@ -70,9 +70,16 @@ fn main() {
         material: Material { diffuse_color: Vec3 { x: 100.0, y: 20.0, z: 30.0 } },
         radius: 0.1,
     };
+
+    let l1 = Light {
+        position: Vec3 { x: 0.0, y: 0.0, z: -1.0 },
+        intensity: 0.8
+    }
     
     spheres.push(s1);
     spheres.push(s2);
+
+    lights.push(l1);
 
     let camera = Vec3 { x: 0.0, y: 0.0, z: -1.0 };
 
@@ -93,8 +100,6 @@ fn main() {
     }
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Processing
-
-            
         // Update window
         window.update_with_buffer(&buffer).unwrap();
 
