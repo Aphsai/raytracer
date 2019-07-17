@@ -1,11 +1,12 @@
 extern crate minifb;
 mod geometry;
 mod material;
+mod light;
 
 use minifb::{ Key, WindowOptions, Window };
-use crate::geometry::{ Vec3, dot, cross };
+use crate::geometry::{ Vec3, dot };
 use crate::material::{ Material };
-use std::cmp;
+use crate::light::{ Light };
 use std::f64;
 
 const WIDTH : usize = 1280;
@@ -19,26 +20,44 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn ray_intersect(&self, origin: Vec3, direction: Vec3, point: &mut Vec3, normal: &mut Vec3) -> bool {
+    pub fn ray_intersect(&self, origin: Vec3, direction: Vec3, distance: &mut f64) -> bool {
 
         let oc = self.center - origin;
         let b = dot(oc, direction);
         let d = dot(oc, oc) - b * b;
-        if (d > self.radius * self.radius) {
+        if d > self.radius * self.radius {
             return false;
         }
+        let t = (self.radius * self.radius - d).sqrt();
+
+        if d - t > 0.0 {
+            *distance = d - t;
+            return true;
+        }
+
+        if d + t > 0.0 {
+            *distance = d + t;
+            return true;
+        }
+
+        return false;
     }
 }
 
 fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction: Vec3) -> Vec3 {
     let mut color = Vec3 { x: 0.0, y: 50.0, z: 50.0 };
     'sphere_loop: for sphere in spheres {
-        let point: Vec3;
-        let normal: Vec3;
-        let diffuse_light_intensity = 0.0;
-        if sphere.ray_intersect(origin, direction, &mut point, &mut normal) {
+        let mut distance = 0.0;
+        let mut diffuse_light_intensity = 0.0;
+        if sphere.ray_intersect(origin, direction, &mut distance) {
                 for light in lights {
-                    let light_direction = (light.position - point).normalize();
+
+                    let point = origin + direction * distance;
+                    let mut normal = point - sphere.center;
+                    let mut light_direction = light.position - point;
+                    normal.normalize();
+                    light_direction.normalize();
+
                     diffuse_light_intensity += light.intensity *  dot(light_direction, normal).max(0.0);
                 }
                 color = sphere.material.diffuse_color * diffuse_light_intensity;
@@ -46,7 +65,7 @@ fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction:
 
             }
         }
-    return color
+    return color;
 }
 
 fn main() {
@@ -58,26 +77,38 @@ fn main() {
 
 
     let mut spheres: Vec<Sphere> = Vec::new();
-    let mut lights: Vec<Lights> = Vec::new();
+    let mut lights: Vec<Light> = Vec::new();
 
     let s1 = Sphere { 
-        center: Vec3 { x: 0.1, y: 0.5, z: 0.0 },
+        center: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
         material: Material { diffuse_color: Vec3 { x: 100.0, y: 0.0, z: 1.0 } },
-        radius: 0.1,
+        radius: 0.4,
     };
     let s2 = Sphere { 
-        center: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
+        center: Vec3 { x: 0.5, y: 0.0, z: 0.0 },
         material: Material { diffuse_color: Vec3 { x: 100.0, y: 20.0, z: 30.0 } },
-        radius: 0.1,
+        radius: 0.4,
+    };
+    let s3 = Sphere { 
+        center: Vec3 { x: -0.5, y: 0.0, z: 0.0 },
+        material: Material { diffuse_color: Vec3 { x: 100.0, y: 20.0, z: 30.0 } },
+        radius: 0.4,
+    };
+    let s4 = Sphere { 
+        center: Vec3 { x: 0.0, y: 0.5, z: 0.0 },
+        material: Material { diffuse_color: Vec3 { x: 100.0, y: 20.0, z: 30.0 } },
+        radius: 0.4,
     };
 
     let l1 = Light {
-        position: Vec3 { x: 0.0, y: 0.0, z: -1.0 },
-        intensity: 0.8
-    }
+        position: Vec3 { x: 0.0, y: 0.0, z: -5.0 },
+        intensity: 1.5
+    };
     
     spheres.push(s1);
     spheres.push(s2);
+    spheres.push(s3);
+    spheres.push(s4);
 
     lights.push(l1);
 

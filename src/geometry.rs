@@ -1,6 +1,7 @@
+#![allow(dead_code)]
+
 use std::ops;
 use std::fmt;
-
 #[derive(Clone, Copy, Debug)]
 pub struct Vec3 {
     pub x: f64,
@@ -24,6 +25,7 @@ impl Vec3 {
         self.y /= len;
         self.z /= len;
     }
+    pub fn new() -> Vec3 { Vec3 { x: 0.0, y: 0.0, z: 0.0 } }
 }
 
 impl fmt::Display for Vec3 {
