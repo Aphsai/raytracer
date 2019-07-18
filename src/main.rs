@@ -30,13 +30,13 @@ impl Sphere {
         }
         let t = (self.radius * self.radius - d).sqrt();
 
-        if d - t > 0.0 {
-            *distance = d - t;
+        if b - t > 0.0 {
+            *distance = b - t;
             return true;
         }
 
-        if d + t > 0.0 {
-            *distance = d + t;
+        if b + t > 0.0 {
+            *distance = b + t;
             return true;
         }
 
@@ -101,7 +101,7 @@ fn main() {
     };
 
     let l1 = Light {
-        position: Vec3 { x: 0.0, y: 0.0, z: -5.0 },
+        position: Vec3 { x: 1.0, y: 0.0, z: -5.0 },
         intensity: 1.5
     };
     
