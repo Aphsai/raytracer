@@ -11,6 +11,7 @@ use std::f64;
 
 const WIDTH : usize = 1280;
 const HEIGHT : usize = 720;
+const MAX_DEPTH : u16 = 4;
 
 #[derive(Clone, Copy)]
 pub struct Sphere {
@@ -44,31 +45,38 @@ impl Sphere {
     }
 }
 
-fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction: Vec3) -> Vec3 {
+fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction: Vec3, depth: u16) -> Vec3 {
     let mut color = Vec3 { x: 0.0, y: 0.2, z: 0.2 };
-    'sphere_loop: for sphere in spheres {
-        let mut distance = 0.0;
+    if depth > MAX_DEPTH {
+        return color;
+    }
+    for sphere in spheres {
         let mut diffuse_light_intensity = 0.0;
         let mut specular_light_intensity = 0.0;
+        let mut reflect_color = Vec3::new();
+        let mut distance = 0.0;
         if sphere.ray_intersect(origin, direction, &mut distance) {
-                for light in lights {
+            for light in lights {
 
-                    let point = origin + direction * distance;
-                    let mut normal = point - sphere.center;
-                    let mut light_direction = light.position - point;
-                    normal.normalize();
-                    light_direction.normalize();
+                let point = origin + direction * distance;
+                let mut normal = point - sphere.center;
+                let mut light_direction = light.position - point;
 
-                    diffuse_light_intensity += light.intensity *  dot(light_direction, normal).max(0.0);
-                    specular_light_intensity += dot(-(-light_direction.reflect(&normal)), direction).max(0.0).powf(sphere.material.specular_exponent) * light.intensity;
-                }
-                color = sphere.material.diffuse_color * diffuse_light_intensity * sphere.material.albedo.x + specular_light_intensity * sphere.material.albedo.y * Vec3::unit();
+                normal.normalize();
+                light_direction.normalize();
 
-                // Only hit the first sphere it intersects with
-                break 'sphere_loop;
+                let reflect_direction = direction.reflect(&normal);
+                let reflect_origin = if dot(reflect_direction, normal) < 0.0 { point - normal * 1e-3 } else { point + normal * 1e-3 };
+
+                reflect_color = cast_ray(&spheres, &lights, reflect_origin, reflect_direction, depth + 1);
+
+                diffuse_light_intensity += light.intensity *  dot(light_direction, normal).max(0.0);
+                specular_light_intensity += dot(-(-light_direction.reflect(&normal)), direction).max(0.0).powf(sphere.material.specular_exponent) * light.intensity;
 
             }
+            color = sphere.material.diffuse_color * diffuse_light_intensity * sphere.material.albedo.x + specular_light_intensity * sphere.material.albedo.y * Vec3::unit() + reflect_color * sphere.material.albedo.z;
         }
+    }
     return color;
 }
 
@@ -100,21 +108,21 @@ fn main() {
     };
     let s4 = Sphere { 
         center: Vec3 { x: 0.5, y: 0.5, z: 0.0 },
-        material: material::IVORY,
-        radius: 0.5,
+        material: material::MIRROR,
+        radius: 0.3,
     };
 
     let l1 = Light {
-        position: Vec3 { x: 1.0, y: 0.0, z: -10.0 },
+        position: Vec3 { x: 1.0, y: 1.0, z: -10.0 },
         intensity: 1.3
     };
     let l2 = Light {
-        position: Vec3 { x: 0.0, y: 1.0, z: -5.0 },
-        intensity: 1.5
+        position: Vec3 { x: -2.0, y: -1.0, z: -5.0 },
+        intensity: 1.1
     };
     let l3 = Light {
-        position: Vec3 { x: 1.5, y: 1.5, z: -10.0 },
-        intensity: 1.9
+        position: Vec3 { x: 0.0, y: -2.0, z: -10.0 },
+        intensity: 1.2
     };
     
     spheres.push(s1);
@@ -137,7 +145,7 @@ fn main() {
             let mut dir = Vec3 { x: i, y: j, z: 1.0 };
             dir.normalize();
 
-            let mut color = cast_ray(&spheres, &lights, camera, dir);
+            let mut color = cast_ray(&spheres, &lights, camera, dir, 0);
             color.x = color.x.min(1.0) * 255.0;
             color.y = color.y.min(1.0) * 255.0;
             color.z = color.z.min(1.0) * 255.0;

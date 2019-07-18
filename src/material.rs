@@ -15,6 +15,12 @@ pub const RED_RUBBER : Material = Material {
 
 pub const IVORY : Material = Material {
     diffuse_color: Vec3 { x: 0.4, y: 0.4, z: 0.3 },
-    albedo: Vec3 { x: 0.6, y: 0.3, z: 0.0 },
+    albedo: Vec3 { x: 0.6, y: 0.3, z: 0.1 },
     specular_exponent: 50.0
+};
+
+pub const MIRROR : Material = Material {
+    diffuse_color: Vec3 { x: 1.0, y: 1.0, z: 1.0 },
+    albedo: Vec3 { x: 0.0, y: 10.0, z: 0.8 },
+    specular_exponent : 1425.0
 };
