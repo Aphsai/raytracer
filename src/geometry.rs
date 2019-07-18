@@ -1,7 +1,7 @@
 #![allow(dead_code)]
-
 use std::ops;
 use std::fmt;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Vec3 {
     pub x: f64,
