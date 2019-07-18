@@ -45,10 +45,11 @@ impl Sphere {
 }
 
 fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction: Vec3) -> Vec3 {
-    let mut color = Vec3 { x: 0.0, y: 50.0, z: 50.0 };
+    let mut color = Vec3 { x: 0.0, y: 0.2, z: 0.2 };
     'sphere_loop: for sphere in spheres {
         let mut distance = 0.0;
         let mut diffuse_light_intensity = 0.0;
+        let mut specular_light_intensity = 0.0;
         if sphere.ray_intersect(origin, direction, &mut distance) {
                 for light in lights {
 
@@ -59,8 +60,11 @@ fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction:
                     light_direction.normalize();
 
                     diffuse_light_intensity += light.intensity *  dot(light_direction, normal).max(0.0);
+                    specular_light_intensity += dot(-(-light_direction.reflect(&normal)), direction).max(0.0).powf(sphere.material.specular_exponent) * light.intensity;
                 }
-                color = sphere.material.diffuse_color * diffuse_light_intensity;
+                color = sphere.material.diffuse_color * diffuse_light_intensity * sphere.material.albedo.x + specular_light_intensity * sphere.material.albedo.y * Vec3::unit();
+
+                // Only hit the first sphere it intersects with
                 break 'sphere_loop;
 
             }
@@ -81,28 +85,36 @@ fn main() {
 
     let s1 = Sphere { 
         center: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
-        material: Material { diffuse_color: Vec3 { x: 100.0, y: 0.0, z: 1.0 } },
+        material: material::RED_RUBBER,
         radius: 0.4,
     };
     let s2 = Sphere { 
-        center: Vec3 { x: 0.5, y: 0.0, z: 0.0 },
-        material: Material { diffuse_color: Vec3 { x: 100.0, y: 20.0, z: 30.0 } },
-        radius: 0.4,
+        center: Vec3 { x: -0.4, y: 0.6, z: 0.0 },
+        material: material::IVORY,
+        radius: 0.2,
     };
     let s3 = Sphere { 
-        center: Vec3 { x: -0.5, y: 0.0, z: 0.0 },
-        material: Material { diffuse_color: Vec3 { x: 100.0, y: 20.0, z: 30.0 } },
-        radius: 0.4,
+        center: Vec3 { x: -0.5, y: -0.3, z: 0.0 },
+        material: material::RED_RUBBER,
+        radius: 0.1,
     };
     let s4 = Sphere { 
-        center: Vec3 { x: 0.0, y: 0.5, z: 0.0 },
-        material: Material { diffuse_color: Vec3 { x: 100.0, y: 20.0, z: 30.0 } },
-        radius: 0.4,
+        center: Vec3 { x: 0.5, y: 0.5, z: 0.0 },
+        material: material::IVORY,
+        radius: 0.5,
     };
 
     let l1 = Light {
-        position: Vec3 { x: 1.0, y: 0.0, z: -5.0 },
+        position: Vec3 { x: 1.0, y: 0.0, z: -10.0 },
+        intensity: 1.3
+    };
+    let l2 = Light {
+        position: Vec3 { x: 0.0, y: 1.0, z: -5.0 },
         intensity: 1.5
+    };
+    let l3 = Light {
+        position: Vec3 { x: 1.5, y: 1.5, z: -10.0 },
+        intensity: 1.9
     };
     
     spheres.push(s1);
@@ -111,6 +123,8 @@ fn main() {
     spheres.push(s4);
 
     lights.push(l1);
+    lights.push(l2);
+    lights.push(l3);
 
     let camera = Vec3 { x: 0.0, y: 0.0, z: -1.0 };
 
@@ -123,7 +137,10 @@ fn main() {
             let mut dir = Vec3 { x: i, y: j, z: 1.0 };
             dir.normalize();
 
-            let color = cast_ray(&spheres, &lights, camera, dir);
+            let mut color = cast_ray(&spheres, &lights, camera, dir);
+            color.x = color.x.min(1.0) * 255.0;
+            color.y = color.y.min(1.0) * 255.0;
+            color.z = color.z.min(1.0) * 255.0;
 
             buffer[x * WIDTH + y] = (color.x as u32) << 16 | (color.y as u32) << 8 | (color.z as u32);
 

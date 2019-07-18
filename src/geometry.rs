@@ -25,7 +25,15 @@ impl Vec3 {
         self.y /= len;
         self.z /= len;
     }
+
+    #[inline]
+    pub fn reflect(&self, normal: &Vec3) -> Vec3 {
+        *self - *normal * 2.0 * dot(*self, *normal)
+    }
+
+
     pub fn new() -> Vec3 { Vec3 { x: 0.0, y: 0.0, z: 0.0 } }
+    pub fn unit() -> Vec3 { Vec3 { x: 1.0, y: 1.0, z: 1.0 } }
 }
 
 impl fmt::Display for Vec3 {
@@ -103,6 +111,14 @@ impl ops::Div<f64> for Vec3 {
 
     fn div(self, _rhs: f64) -> Vec3 {
         Vec3 { x: self.x / _rhs, y: self.y / _rhs, z: self.z / _rhs }
+    }
+}
+
+impl ops::Neg for Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Vec3 {
+        Vec3 { x: -self.x, y: -self.y, z: -self.z }
     }
 }
 
