@@ -1,17 +1,22 @@
 extern crate minifb;
+extern crate threadpool;
+extern crate num_cpus;
+extern crate crossbeam;
 
 mod geometry;
 mod material;
 mod light;
 
 use minifb::{ Key, WindowOptions, Window };
+use threadpool::ThreadPool;
+use crossbeam::atomic::AtomicCell;
 use crate::geometry::{ Vec3, dot };
 use crate::material::{ Material };
 use crate::light::{ Light };
 use std::f64;
-use std::sync::{ Arc };
+use std::sync::{ Arc, Mutex };
+//use std::sync::atomic::{ AtomicU32 , Ordering };
 use std::sync::mpsc;
-use std::thread;
 
 const WIDTH : usize = 1280;
 const HEIGHT : usize = 720;
@@ -66,6 +71,7 @@ fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction:
         let mut specular_light_intensity = 0.0;
         let mut reflect_color = Vec3::new();
         let mut distance = 0.0;
+
         if sphere.ray_intersect(origin, direction, &mut distance) {
             for light in lights {
                 let point = origin + direction * distance;
@@ -93,11 +99,12 @@ fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction:
 fn main() {
     let fov = 90.0 / 180.0 * f64::consts::PI;
     let camera = Vec3 { x: 0.0, y: 0.0, z: -1.0 };
-    let mut buffer : Vec<u32> = vec![0; WIDTH * HEIGHT];
+    let pool = ThreadPool::new(num_cpus::get());
+
+    let buffer = Arc::new(Mutex::new(vec![0; WIDTH * HEIGHT]));
     let mut window = Window::new("", WIDTH, HEIGHT, WindowOptions { borderless: true, title: false, resize: false, scale: minifb::Scale::X1 } ).unwrap_or_else(|e| {
         panic!("{}", e);
     });
-    let mut handles = Vec::new();
 
     let s1 = Sphere { 
         center: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -136,14 +143,15 @@ fn main() {
     let spheres = Arc::new(vec![s1, s2, s3, s4]);
     let lights = Arc::new(vec![l1, l2, l3]);
 
-    let (tx, rx) = mpsc::channel();
+    //let (tx, rx) = mpsc::channel();
 
     for x in 0..HEIGHT {
         for y in 0..WIDTH {
             let spheres_t = Arc::clone(&spheres);
             let lights_t = Arc::clone(&lights);
-            let tx_t = tx.clone();
-            let handle = thread::spawn(move || {
+            //let tx_t = tx.clone();
+            let buffer_t = buffer.clone();
+            pool.execute(move || {
 
                 let i = (2.0 * (y as f64 + 0.5) / (WIDTH as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs() * (WIDTH as f64) / (HEIGHT as f64);
                 let j = -(2.0 * (x as f64 + 0.5) / (HEIGHT as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs();
@@ -156,24 +164,20 @@ fn main() {
                 color.y = color.y.min(1.0) * 255.0;
                 color.z = color.z.min(1.0) * 255.0;
 
-                let pixel = Pixel { x: x, y: y, color: color };
-                tx_t.send(pixel).unwrap();
+                let mut buffer_t = buffer_t.lock().unwrap();
+
+                buffer_t[x * WIDTH + y] = (color.x as u32) << 16 | (color.y as u32) << 8 | (color.z as u32);
+
             });
-            handles.push(handle);
         }
     }
+    pool.join();
+    //for received in rx {
+    //}
 
-    for received in rx {
-        println!("{} {} {}", received.x, received.y, received.color);
-        buffer[received.x * WIDTH + received.y] = (received.color.x as u32) << 16 | (received.color.y as u32) << 8 | (received.color.z as u32);
-    }
-
-    let compiled_buffer = buffer.to_vec();
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        // Processing
-        // Update window
+    let compiled_buffer = buffer.lock().unwrap().to_vec();
+    while window.is_open() && !window.is_key_down(Key::Escape) {    
         window.update_with_buffer(&compiled_buffer).unwrap();
-
     }
 
 }
