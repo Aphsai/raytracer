@@ -9,18 +9,16 @@ mod light;
 
 use minifb::{ Key, WindowOptions, Window };
 use threadpool::ThreadPool;
-use crossbeam::atomic::AtomicCell;
 use crate::geometry::{ Vec3, dot };
 use crate::material::{ Material };
 use crate::light::{ Light };
 use std::f64;
 use std::sync::{ Arc, Mutex };
-//use std::sync::atomic::{ AtomicU32 , Ordering };
-use std::sync::mpsc;
 
 const WIDTH : usize = 1280;
 const HEIGHT : usize = 720;
 const MAX_DEPTH : u16 = 4;
+const MAX_RENDER_DISTANCE : f64 = 1000.0;
 
 #[derive(Clone, Copy)]
 pub struct Sphere {
@@ -29,24 +27,14 @@ pub struct Sphere {
     pub material: Material,
 }
 
-#[derive(Clone, Copy)]
-pub struct Pixel {
-    pub x: usize,
-    pub y: usize,
-    pub color: Vec3,
-}
-
 impl Sphere {
     pub fn ray_intersect(&self, origin: Vec3, direction: Vec3, distance: &mut f64) -> bool {
 
         let oc = self.center - origin;
         let b = dot(oc, direction);
         let d = dot(oc, oc) - b * b;
-        if d > self.radius * self.radius {
-            return false;
-        }
+        if d > self.radius * self.radius { false }
         let t = (self.radius * self.radius - d).sqrt();
-
         if b - t > 0.0 {
             *distance = b - t;
             return true;
@@ -61,37 +49,57 @@ impl Sphere {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct Hit {
+    pub distance: Vec3,
+    pub normal: Vec3,
+    pub point: Vec3,
+    pub material: Material,
+}
+
+fn intersect_scene(spheres: &Vec<Sphere>, origin: Vec3, direction: Vec3, distance: &mut f64) -> bool {
+    for sphere in spheres {
+        let mut current_distance = 0.0;
+        if (sphere.ray_intersect(origin, direction, &mut current_distance)) {
+            *distance = *distance.min(current_distance);
+        }
+    }
+    return *distance < MAX_RENDER_DISTANCE;
+}
+
 fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction: Vec3, depth: u16) -> Vec3 {
     let mut color = Vec3 { x: 0.0, y: 0.2, z: 0.2 };
     if depth > MAX_DEPTH {
         return color;
     }
-    for sphere in spheres {
-        let mut diffuse_light_intensity = 0.0;
-        let mut specular_light_intensity = 0.0;
-        let mut reflect_color = Vec3::new();
-        let mut distance = 0.0;
 
-        if sphere.ray_intersect(origin, direction, &mut distance) {
-            for light in lights {
-                let point = origin + direction * distance;
-                let mut normal = point - sphere.center;
-                let mut light_direction = light.position - point;
+    let mut diffuse_light_intensity = 0.0;
+    let mut specular_light_intensity = 0.0;
+    let mut reflect_color = Vec3::new();
+    let mut distance = 0.0;
 
-                normal.normalize();
-                light_direction.normalize();
+    if intersect_scene(origin, direction, &mut distance) {
+        for light in lights {
 
-                let reflect_direction = direction.reflect(&normal);
-                let reflect_origin = if dot(reflect_direction, normal) < 0.0 { point - normal * 1e-3 } else { point + normal * 1e-3 };
+            let point = origin + direction * distance;
+            let light_distance = (light.position - point).len();
+            
+            let mut normal = point - sphere.center;
+            let mut light_direction = light.position - point;
 
-                reflect_color = cast_ray(&spheres, &lights, reflect_origin, reflect_direction, depth + 1);
+            normal.normalize();
+            light_direction.normalize();
 
-                diffuse_light_intensity += light.intensity *  dot(light_direction, normal).max(0.0);
-                specular_light_intensity += dot(-(-light_direction.reflect(&normal)), direction).max(0.0).powf(sphere.material.specular_exponent) * light.intensity;
+            let reflect_direction = direction.reflect(&normal);
+            let reflect_origin = if dot(reflect_direction, normal) < 0.0 { point - normal * 1e-3 } else { point + normal * 1e-3 };
 
-            }
-            color = sphere.material.diffuse_color * diffuse_light_intensity * sphere.material.albedo.x + specular_light_intensity * sphere.material.albedo.y * Vec3::unit() + reflect_color * sphere.material.albedo.z;
+            reflect_color = cast_ray(&spheres, &lights, reflect_origin, reflect_direction, depth + 1);
+
+            diffuse_light_intensity += light.intensity *  dot(light_direction, normal).max(0.0);
+            specular_light_intensity += dot(-(-light_direction.reflect(&normal)), direction).max(0.0).powf(sphere.material.specular_exponent) * light.intensity;
+
         }
+        color = sphere.material.diffuse_color * diffuse_light_intensity * sphere.material.albedo.x + specular_light_intensity * sphere.material.albedo.y * Vec3::unit() + reflect_color * sphere.material.albedo.z;
     }
     return color;
 }
@@ -143,14 +151,11 @@ fn main() {
     let spheres = Arc::new(vec![s1, s2, s3, s4]);
     let lights = Arc::new(vec![l1, l2, l3]);
 
-    //let (tx, rx) = mpsc::channel();
-
     for x in 0..HEIGHT {
         for y in 0..WIDTH {
             let spheres_t = Arc::clone(&spheres);
             let lights_t = Arc::clone(&lights);
-            //let tx_t = tx.clone();
-            let buffer_t = buffer.clone();
+            let buffer_t = Arc::clone(&buffer);
             pool.execute(move || {
 
                 let i = (2.0 * (y as f64 + 0.5) / (WIDTH as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs() * (WIDTH as f64) / (HEIGHT as f64);
@@ -171,13 +176,11 @@ fn main() {
             });
         }
     }
-    pool.join();
-    //for received in rx {
-    //}
 
-    let compiled_buffer = buffer.lock().unwrap().to_vec();
+    pool.join();
+
     while window.is_open() && !window.is_key_down(Key::Escape) {    
-        window.update_with_buffer(&compiled_buffer).unwrap();
+        window.update_with_buffer(&buffer.lock().unwrap().to_vec()).unwrap();
     }
 
 }
