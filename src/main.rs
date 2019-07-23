@@ -33,7 +33,7 @@ impl Sphere {
         let oc = self.center - origin;
         let b = dot(oc, direction);
         let d = dot(oc, oc) - b * b;
-        if d > self.radius * self.radius { false }
+        if d > self.radius * self.radius { return false; }
         let t = (self.radius * self.radius - d).sqrt();
         if b - t > 0.0 {
             *distance = b - t;
@@ -51,20 +51,35 @@ impl Sphere {
 
 #[derive(Clone, Copy)]
 pub struct Hit {
-    pub distance: Vec3,
+    pub distance: f64,
     pub normal: Vec3,
     pub point: Vec3,
     pub material: Material,
 }
 
-fn intersect_scene(spheres: &Vec<Sphere>, origin: Vec3, direction: Vec3, distance: &mut f64) -> bool {
-    for sphere in spheres {
-        let mut current_distance = 0.0;
-        if (sphere.ray_intersect(origin, direction, &mut current_distance)) {
-            *distance = *distance.min(current_distance);
+impl Hit {
+    fn new() -> Hit {
+        Hit {
+            distance: MAX_RENDER_DISTANCE + 1e-3, 
+            normal: Vec3::new(),
+            point: Vec3::new(),
+            material: material::RED_RUBBER,
         }
     }
-    return *distance < MAX_RENDER_DISTANCE;
+}
+
+fn intersect_scene(spheres: &Vec<Sphere>, origin: Vec3, direction: Vec3, hit: &mut Hit) -> bool {
+    for sphere in spheres {
+        let mut current_distance = 0.0;
+        if sphere.ray_intersect(origin, direction, &mut current_distance) && current_distance < hit.distance {
+            hit.distance =  current_distance;
+            hit.material = sphere.material;
+            hit.normal = hit.point - sphere.center;
+            hit.point = origin + direction * hit.distance;
+        }
+    }
+    hit.normal.normalize();
+    return hit.distance < MAX_RENDER_DISTANCE;
 }
 
 fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction: Vec3, depth: u16) -> Vec3 {
@@ -76,30 +91,33 @@ fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction:
     let mut diffuse_light_intensity = 0.0;
     let mut specular_light_intensity = 0.0;
     let mut reflect_color = Vec3::new();
-    let mut distance = 0.0;
+    
+    // default values for struct
+    let mut hit = Hit::new();
 
-    if intersect_scene(origin, direction, &mut distance) {
+    if intersect_scene(&spheres, origin, direction, &mut hit) {
         for light in lights {
 
-            let point = origin + direction * distance;
-            let light_distance = (light.position - point).len();
-            
-            let mut normal = point - sphere.center;
-            let mut light_direction = light.position - point;
+            let light_distance = (light.position - hit.point).squared_length();
+            let mut light_direction = light.position - hit.point;
 
-            normal.normalize();
             light_direction.normalize();
 
-            let reflect_direction = direction.reflect(&normal);
-            let reflect_origin = if dot(reflect_direction, normal) < 0.0 { point - normal * 1e-3 } else { point + normal * 1e-3 };
+            let shadow_origin = if dot(light_direction, hit.normal) < 0.0 { hit.point - hit.normal * 1e-3 } else { hit.point + hit.normal * 1e-3 };
+            let mut shadow_hit = Hit::new();
+
+            if intersect_scene(&spheres, shadow_origin, light_direction, &mut shadow_hit) && (shadow_hit.point - shadow_origin).squared_length() < light_distance { continue; }
+
+            let reflect_direction = direction.reflect(&(hit.normal));
+            let reflect_origin = if dot(reflect_direction, hit.normal) < 0.0 { hit.point - hit.normal * 1e-3 } else { hit.point + hit.normal * 1e-3 };
 
             reflect_color = cast_ray(&spheres, &lights, reflect_origin, reflect_direction, depth + 1);
 
-            diffuse_light_intensity += light.intensity *  dot(light_direction, normal).max(0.0);
-            specular_light_intensity += dot(-(-light_direction.reflect(&normal)), direction).max(0.0).powf(sphere.material.specular_exponent) * light.intensity;
+            diffuse_light_intensity += light.intensity *  dot(light_direction, hit.normal).max(0.0);
+            specular_light_intensity += dot(-(-light_direction.reflect(&(hit.normal))), direction).max(0.0).powf(hit.material.specular_exponent) * light.intensity;
 
         }
-        color = sphere.material.diffuse_color * diffuse_light_intensity * sphere.material.albedo.x + specular_light_intensity * sphere.material.albedo.y * Vec3::unit() + reflect_color * sphere.material.albedo.z;
+        color = hit.material.diffuse_color * diffuse_light_intensity * hit.material.albedo.x + specular_light_intensity * hit.material.albedo.y * Vec3::unit() + reflect_color * hit.material.albedo.z;
     }
     return color;
 }
