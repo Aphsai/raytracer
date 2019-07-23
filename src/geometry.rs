@@ -19,16 +19,27 @@ impl Vec3 {
         return self.squared_length().sqrt();
     }
     #[inline]
-    pub fn normalize(&mut self) {
+    pub fn normalize(&mut self) -> Vec3 {
         let len = self.length();
         self.x /= len;
         self.y /= len;
         self.z /= len;
+        return *self;
     }
 
     #[inline]
     pub fn reflect(&self, normal: &Vec3) -> Vec3 {
         *self - *normal * 2.0 * dot(*self, *normal)
+    }
+
+    pub fn refract(&self, normal: &Vec3, incident_refractive_index: f64, outgoing_refractive_index: f64) -> Vec3 {
+        let cos_i = -((dot(*self, *normal).min(1.0)).max(-1.0));
+
+        if cos_i < 0.0 { return self.refract(&(-*normal), outgoing_refractive_index, incident_refractive_index); }
+
+        let ratio = incident_refractive_index / outgoing_refractive_index;
+        let k = 1.0 - ratio * ratio * (1.0 - cos_i * cos_i);
+        if k < 0.0 { return Vec3 { x: 1.0, y: 0.0, z: 0.0 }; } else { return *self * ratio + *normal * (ratio * cos_i - k.sqrt()); }
     }
 
 
