@@ -74,8 +74,8 @@ fn intersect_scene(spheres: &Vec<Sphere>, origin: Vec3, direction: Vec3, hit: &m
         if sphere.ray_intersect(origin, direction, &mut current_distance) && current_distance < hit.distance {
             hit.distance =  current_distance;
             hit.material = sphere.material;
+            hit.point = origin + direction * current_distance;
             hit.normal = hit.point - sphere.center;
-            hit.point = origin + direction * hit.distance;
         }
     }
     hit.normal.normalize();
@@ -84,18 +84,15 @@ fn intersect_scene(spheres: &Vec<Sphere>, origin: Vec3, direction: Vec3, hit: &m
 
 fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction: Vec3, depth: u16) -> Vec3 {
     let mut color = Vec3 { x: 0.0, y: 0.2, z: 0.2 };
-    if depth > MAX_DEPTH {
-        return color;
-    }
 
-    let mut diffuse_light_intensity = 0.0;
-    let mut specular_light_intensity = 0.0;
-    let mut reflect_color = Vec3::new();
-    
-    // default values for struct
     let mut hit = Hit::new();
 
-    if intersect_scene(&spheres, origin, direction, &mut hit) {
+    if intersect_scene(&spheres, origin, direction, &mut hit) && depth < MAX_DEPTH {
+
+        let mut diffuse_light_intensity = 0.0;
+        let mut specular_light_intensity = 0.0;
+        let mut reflect_color = Vec3::new();
+    
         for light in lights {
 
             let light_distance = (light.position - hit.point).squared_length();
@@ -114,9 +111,10 @@ fn cast_ray(spheres: &Vec<Sphere>, lights: &Vec<Light>, origin: Vec3, direction:
             reflect_color = cast_ray(&spheres, &lights, reflect_origin, reflect_direction, depth + 1);
 
             diffuse_light_intensity += light.intensity *  dot(light_direction, hit.normal).max(0.0);
-            specular_light_intensity += dot(-(-light_direction.reflect(&(hit.normal))), direction).max(0.0).powf(hit.material.specular_exponent) * light.intensity;
+            specular_light_intensity += dot(-(-light_direction.reflect(&hit.normal)), direction).max(0.0).powf(hit.material.specular_exponent) * light.intensity;
 
         }
+
         color = hit.material.diffuse_color * diffuse_light_intensity * hit.material.albedo.x + specular_light_intensity * hit.material.albedo.y * Vec3::unit() + reflect_color * hit.material.albedo.z;
     }
     return color;
