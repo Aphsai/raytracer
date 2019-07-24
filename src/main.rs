@@ -35,6 +35,7 @@ impl Sphere {
         let d = dot(oc, oc) - b * b;
         if d > self.radius * self.radius { return false; }
         let t = (self.radius * self.radius - d).sqrt();
+
         if b - t > 0.0 {
             *distance = b - t;
             return true;
@@ -79,6 +80,7 @@ fn intersect_scene(spheres: &Vec<Sphere>, origin: Vec3, direction: Vec3, hit: &m
         }
     }
     hit.normal.normalize();
+
     return hit.distance < MAX_RENDER_DISTANCE;
 }
 
@@ -161,8 +163,8 @@ fn main() {
         intensity: 1.1
     };
     let l3 = Light {
-        position: Vec3 { x: 0.0, y: -2.0, z: -10.0 },
-        intensity: 1.2
+        position: Vec3 { x: 1.0, y: 1.0, z: 0.0 },
+        intensity: 1.0
     };
     
     let spheres = Arc::new(vec![s1, s2, s3, s4]);
@@ -170,9 +172,11 @@ fn main() {
 
     for x in 0..HEIGHT {
         for y in 0..WIDTH {
+
             let spheres_t = Arc::clone(&spheres);
             let lights_t = Arc::clone(&lights);
             let buffer_t = Arc::clone(&buffer);
+
             pool.execute(move || {
 
                 let i = (2.0 * (y as f64 + 0.5) / (WIDTH as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs() * (WIDTH as f64) / (HEIGHT as f64);
@@ -191,6 +195,7 @@ fn main() {
                 buffer_t[x * WIDTH + y] = (color.x as u32) << 16 | (color.y as u32) << 8 | (color.z as u32);
 
             });
+
         }
     }
 
