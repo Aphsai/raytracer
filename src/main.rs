@@ -2,26 +2,27 @@ extern crate minifb;
 extern crate threadpool;
 extern crate num_cpus;
 extern crate crossbeam;
+extern crate rand;
 
 mod geometry;
 mod material;
 mod light;
-mod scene;
 
 use minifb::{ Key, WindowOptions, Window };
 use threadpool::ThreadPool;
 use crate::geometry::{ Vec3, dot };
 use crate::material::{ Material };
 use crate::light::{ Light };
-use crate::scene::{ Scene };
 use std::f64;
 use std::sync::{ Arc, Mutex };
+use rand::Rng;
 
 const WIDTH : usize = 1280;
 const HEIGHT : usize = 720;
 const SAMPLES : usize = 50;
 const MAX_DEPTH : u16 = 4;
 const MAX_RENDER_DISTANCE : f64 = 1000.0;
+const ANTIALIAS_STRENGTH : f64 = 0.001;
 
 #[derive(Clone, Copy)]
 pub struct Sphere {
@@ -184,13 +185,18 @@ fn main() {
                 pool.execute(move || {
 
                     let mut color = Vec3::new();
+                    let mut rng = rand::thread_rng();
 
                     for _ in 0..SAMPLES {
 
-                        let mut dir = Vec3 { x: i, y: j, z: 1.0 };
+                        let mut dir = Vec3 { 
+                            x: i + rng.gen::<f64>() * 2.0 * ANTIALIAS_STRENGTH - ANTIALIAS_STRENGTH / 2.0, 
+                            y: j + rng.gen::<f64>() * 2.0 * ANTIALIAS_STRENGTH - ANTIALIAS_STRENGTH / 2.0, 
+                            z: 1.0 
+                        };
                         dir.normalize();
 
-                        let mut sample_color = cast_ray(&spheres_t, &lights_t, camera, dir, 0);
+                        let sample_color = cast_ray(&spheres_t, &lights_t, camera, dir, 0);
 
                         color.x += sample_color.x;
                         color.y += sample_color.y;
