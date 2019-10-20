@@ -2,21 +2,26 @@ extern crate minifb;
 extern crate threadpool;
 extern crate num_cpus;
 extern crate crossbeam;
+extern crate rand;
 
 mod geometry;
 mod material;
 mod light;
+mod scene;
 
 use minifb::{ Key, WindowOptions, Window };
 use threadpool::ThreadPool;
 use crate::geometry::{ Vec3, dot };
 use crate::material::{ Material };
 use crate::light::{ Light };
+use crate::scene::{ Scene };
 use std::f64;
 use std::sync::{ Arc, Mutex };
+use rand::Rng;
 
 const WIDTH : usize = 1280;
 const HEIGHT : usize = 720;
+const SAMPLES : usize = 50;
 const MAX_DEPTH : u16 = 4;
 const MAX_RENDER_DISTANCE : f64 = 1000.0;
 
@@ -35,6 +40,7 @@ impl Sphere {
         let d = dot(oc, oc) - b * b;
         if d > self.radius * self.radius { return false; }
         let t = (self.radius * self.radius - d).sqrt();
+
         if b - t > 0.0 {
             *distance = b - t;
             return true;
@@ -79,6 +85,7 @@ fn intersect_scene(spheres: &Vec<Sphere>, origin: Vec3, direction: Vec3, hit: &m
         }
     }
     hit.normal.normalize();
+
     return hit.distance < MAX_RENDER_DISTANCE;
 }
 
@@ -137,12 +144,12 @@ fn main() {
         radius: 0.4,
     };
     let s2 = Sphere { 
-        center: Vec3 { x: 0.3, y: 0.1, z: -0.4 },
+        center: Vec3 { x: 0.5, y: 0.0, z: 0.4 },
         material: material::GLASS,
         radius: 0.2,
     };
     let s3 = Sphere { 
-        center: Vec3 { x: -0.8, y: -0.3, z: 0.0 },
+        center: Vec3 { x: -0.8, y: 0.3, z: 0.0 },
         material: material::IVORY,
         radius: 0.1,
     };
@@ -153,44 +160,61 @@ fn main() {
     };
 
     let l1 = Light {
-        position: Vec3 { x: 1.0, y: 1.0, z: -10.0 },
+        position: Vec3 { x: 0.0, y: 0.0, z: -10.0 },
         intensity: 1.3
     };
     let l2 = Light {
-        position: Vec3 { x: -2.0, y: -1.0, z: -5.0 },
+        position: Vec3 { x: 1.0, y: -1.0, z: -1.0 },
         intensity: 1.1
-    };
-    let l3 = Light {
-        position: Vec3 { x: 0.0, y: -2.0, z: -10.0 },
-        intensity: 1.2
     };
     
     let spheres = Arc::new(vec![s1, s2, s3, s4]);
-    let lights = Arc::new(vec![l1, l2, l3]);
+    let lights = Arc::new(vec![l1, l2]);
 
     for x in 0..HEIGHT {
         for y in 0..WIDTH {
+
             let spheres_t = Arc::clone(&spheres);
             let lights_t = Arc::clone(&lights);
             let buffer_t = Arc::clone(&buffer);
-            pool.execute(move || {
+
 
                 let i = (2.0 * (y as f64 + 0.5) / (WIDTH as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs() * (WIDTH as f64) / (HEIGHT as f64);
                 let j = -(2.0 * (x as f64 + 0.5) / (HEIGHT as f64) - 1.0) * (fov / 2.0).tan() * camera.z.abs();
+                
 
-                let mut dir = Vec3 { x: i, y: j, z: 1.0 };
-                dir.normalize();
+                pool.execute(move || {
 
-                let mut color = cast_ray(&spheres_t, &lights_t, camera, dir, 0);
-                color.x = color.x.min(1.0) * 255.0;
-                color.y = color.y.min(1.0) * 255.0;
-                color.z = color.z.min(1.0) * 255.0;
+                    let mut color = Vec3::new();
+                    let mut rng = rand::thread_rng();
 
-                let mut buffer_t = buffer_t.lock().unwrap();
+                    for _ in 0..SAMPLES {
+                        
+                        let x_deviation = (rng.gen::<f64>() * 2.0 - 1.0) * 0.005;
+                        let y_deviation = (rng.gen::<f64>() * 2.0 - 1.0) * 0.005;
+                        let mut dir = Vec3 { x: i + x_deviation, y: j + y_deviation, z: 1.0 };
+                        dir.normalize();
 
-                buffer_t[x * WIDTH + y] = (color.x as u32) << 16 | (color.y as u32) << 8 | (color.z as u32);
+                        let mut sample_color = cast_ray(&spheres_t, &lights_t, camera, dir, 0);
 
-            });
+                        color.x += sample_color.x;
+                        color.y += sample_color.y;
+                        color.z += sample_color.z;
+
+                    }
+
+                    color.x = (color.x / SAMPLES as f64).min(1.0) * 255.0;
+                    color.y = (color.y / SAMPLES as f64).min(1.0) * 255.0;
+                    color.z = (color.z / SAMPLES as f64).min(1.0) * 255.0;
+
+                    let mut buffer_t = buffer_t.lock().unwrap();
+
+                    buffer_t[x * WIDTH + y] = (color.x as u32) << 16 | (color.y as u32) << 8 | (color.z as u32);
+                
+                });
+
+
+
         }
     }
 
