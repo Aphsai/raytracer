@@ -24,6 +24,7 @@ const HEIGHT : usize = 720;
 const SAMPLES : usize = 50;
 const MAX_DEPTH : u16 = 4;
 const MAX_RENDER_DISTANCE : f64 = 1000.0;
+const ANTIALIAS_STRENGTH : f64 = 0.001;
 
 #[derive(Clone, Copy)]
 pub struct Sphere {
@@ -196,6 +197,15 @@ fn main() {
                         dir.normalize();
 
                         let mut sample_color = cast_ray(&spheres_t, &lights_t, camera, dir, 0);
+
+                        let mut dir = Vec3 { 
+                            x: i + rng.gen::<f64>() * 2.0 * ANTIALIAS_STRENGTH - ANTIALIAS_STRENGTH / 2.0, 
+                            y: j + rng.gen::<f64>() * 2.0 * ANTIALIAS_STRENGTH - ANTIALIAS_STRENGTH / 2.0, 
+                            z: 1.0 
+                        };
+                        dir.normalize();
+
+                        let sample_color = cast_ray(&spheres_t, &lights_t, camera, dir, 0);
 
                         color.x += sample_color.x;
                         color.y += sample_color.y;
